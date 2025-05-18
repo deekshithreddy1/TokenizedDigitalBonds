@@ -1,11 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Shield, User } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { useAuthStore } from '../store/authStore';
 
 interface AuthenticationProps {
   onLogin: () => void;
@@ -15,55 +10,22 @@ const Authentication: React.FC<AuthenticationProps> = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
   
-  const handleLogin = async (e: React.FormEvent) => {
+  const { signIn, signUp, isLoading, error } = useAuthStore();
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setIsLoading(true);
     
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (signInError) {
-        throw signInError;
-      }
-
-      if (data.user) {
+      if (isSignUp) {
+        await signUp(email, password);
+      } else {
+        await signIn(email, password);
         onLogin();
       }
     } catch (err) {
-      setError('Invalid credentials. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSignUp = async () => {
-    setError('');
-    setIsLoading(true);
-    
-    try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (signUpError) {
-        throw signUpError;
-      }
-
-      if (data.user) {
-        setError('Success! You can now sign in with your credentials.');
-      }
-    } catch (err) {
-      setError('Error creating account. Please try again.');
-    } finally {
-      setIsLoading(false);
+      console.error('Authentication error:', err);
     }
   };
   
@@ -80,7 +42,9 @@ const Authentication: React.FC<AuthenticationProps> = ({ onLogin }) => {
         
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Sign in to your account</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">
+              {isSignUp ? 'Create an Account' : 'Sign in to your account'}
+            </h2>
             
             {error && (
               <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg">
@@ -88,7 +52,7 @@ const Authentication: React.FC<AuthenticationProps> = ({ onLogin }) => {
               </div>
             )}
             
-            <form onSubmit={handleLogin}>
+            <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                   Email Address
@@ -145,16 +109,15 @@ const Authentication: React.FC<AuthenticationProps> = ({ onLogin }) => {
                   isLoading ? 'bg-blue-400' : 'bg-[#0033A0] hover:bg-blue-900'
                 }`}
               >
-                {isLoading ? 'Signing in...' : 'Sign in'}
+                {isLoading ? 'Processing...' : isSignUp ? 'Create Account' : 'Sign in'}
               </button>
-
+              
               <button
                 type="button"
-                onClick={handleSignUp}
-                disabled={isLoading}
-                className="w-full mt-3 py-2.5 px-4 rounded-lg text-[#0033A0] border border-[#0033A0] font-medium hover:bg-blue-50 transition-colors"
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="w-full mt-3 text-sm text-[#0033A0] hover:underline"
               >
-                Create Account
+                {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
               </button>
               
               <div className="flex justify-between mt-4 text-sm">
